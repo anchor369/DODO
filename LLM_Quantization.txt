@@ -5,6 +5,11 @@ Step1:
 Downloading the model: 
 -commands: 
 
+Use Hugging Face Transformers to download Mistral 7B:
 from transformers import AutoModelForCausalLM, AutoTokenizer
 model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-v0.1")
 tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+
+-Save the model and tokenizer locally:
+model.save_pretrained("./mistral-7b")
+tokenizer.save_pretrained("./mistral-7b")
