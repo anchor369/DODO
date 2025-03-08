@@ -31,3 +31,5 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"
 )
 tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+
+pip install git+https://github.com/TimDettmers/bitsandbytes.git
