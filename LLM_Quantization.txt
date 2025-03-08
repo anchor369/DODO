@@ -1,5 +1,5 @@
 Commands: 
-
+#token for mistral : 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
 #Using Hugging face: 
 Step1: 
 Downloading the model: 
