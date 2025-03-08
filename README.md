@@ -8,3 +8,9 @@ basically based on commands or prompts in human language the AI will interpret t
 I am going to use my raspberry pi currently as the main server, and other devices as Client
 The communication, has to be done over wifi, amd all the devices connected on the same wifi.
 Give me a step wise breakdown of the complete project break it in chunks an dgive the proper flow and tools.
+
+
+Claue AI Chat - https://claude.ai/share/b1d8f884-44a1-48e3-897f-38c6abb4e026
+Open AI Chat - https://chatgpt.com/share/67cc9090-db34-800c-94c1-1dc8afa0c1c2
+DeepSeek AI Chat - not shareable
+Grok AI Chat - https://grok.com/share/bGVnYWN5_a03a4fdb-aa57-4b01-a431-772ee663261e
