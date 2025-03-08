@@ -3,7 +3,7 @@ Commands:
 #Using Hugging face: 
 Step1: 
 Downloading the model: 
--commands: 
+-Python codes: 
 
 Use Hugging Face Transformers to download Mistral 7B:
 from transformers import AutoModelForCausalLM, AutoTokenizer
