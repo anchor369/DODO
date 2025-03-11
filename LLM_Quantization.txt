@@ -64,3 +64,5 @@ tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 # Save the quantized model and tokenizer
 model.save_pretrained("./tinyllama-8bit")  # Save as 8-bit quantized model
 tokenizer.save_pretrained("./tinyllama-8bit")
+
+pip install git+https://github.com/TimDettmers/bitsandbytes.git
