@@ -14,3 +14,6 @@ Claude AI Chat - https://claude.ai/share/b1d8f884-44a1-48e3-897f-38c6abb4e026
 Open AI Chat - https://chatgpt.com/share/67cc9090-db34-800c-94c1-1dc8afa0c1c2
 DeepSeek AI Chat - not shareable
 Grok AI Chat - https://grok.com/share/bGVnYWN5_a03a4fdb-aa57-4b01-a431-772ee663261e
+
+
+https://meet.google.com/psy-jefg-xen
