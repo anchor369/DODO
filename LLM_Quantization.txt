@@ -33,3 +33,34 @@ model = AutoModelForCausalLM.from_pretrained(
 tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
 pip install git+https://github.com/TimDettmers/bitsandbytes.git
+
+10/03/25
+
+import torch  # Import the torch module
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import BitsAndBytesConfig
+import os
+
+# Disable CUDA and suppress bitsandbytes welcome message
+os.environ["BITSANDBYTES_NOWELCOME"] = "1"  # Disable welcome message
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable CUDA
+
+# Configure 8-bit quantization for CPU
+quantization_config = BitsAndBytesConfig(
+    load_in_8bit=True,  # Use 8-bit quantization (CPU-compatible)
+    llm_int8_enable_fp32_cpu_offload=True  # Enable CPU offloading for better performance
+)
+
+# Load the TinyLlama model with 8-bit quantization
+model = AutoModelForCausalLM.from_pretrained(
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    quantization_config=quantization_config,
+    device_map="auto"  # Automatically map to available hardware (CPU in this case)
+)
+
+# Load the tokenizer
+tokenizer = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+
+# Save the quantized model and tokenizer
+model.save_pretrained("./tinyllama-8bit")  # Save as 8-bit quantized model
+tokenizer.save_pretrained("./tinyllama-8bit")
