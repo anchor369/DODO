@@ -66,3 +66,7 @@ model.save_pretrained("./tinyllama-8bit")  # Save as 8-bit quantized model
 tokenizer.save_pretrained("./tinyllama-8bit")
 
 pip install git+https://github.com/TimDettmers/bitsandbytes.git
+
+
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
