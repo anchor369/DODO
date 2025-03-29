@@ -1,0 +1,464 @@
+smbclient -L localhost -U your_username
+Password for [WORKGROUP\your_username]:
+
+	Sharename       Type      Comment
+	---------       ----      -------
+	print$          Disk      Printer Drivers
+	Shared          Disk      
+	IPC$            IPC       IPC Service (aadish-desktop server (Samba, Ubuntu))
+SMB1 disabled -- no workgroup available
+aadish@aadish-desktop:~/Desktop/gpt$ sudo nano /etc/samba/smb.conf
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl restart smbd
+aadish@aadish-desktop:~/Desktop/gpt$ sudo nano /etc/samba/smb.conf
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl restart smbd
+aadish@aadish-desktop:~/Desktop/gpt$ smbclient -L <server_ip> -U <username>
+bash: syntax error near unexpected token `newline'
+aadish@aadish-desktop:~/Desktop/gpt$ smbclient -L <server_ip> -U aadish
+bash: server_ip: No such file or directory
+aadish@aadish-desktop:~/Desktop/gpt$ smbclient -L 192.168.9.63  -U aadish
+Password for [WORKGROUP\aadish]:
+
+	Sharename       Type      Comment
+	---------       ----      -------
+	print$          Disk      Printer Drivers
+	Shared          Disk      
+	IPC$            IPC       IPC Service (aadish-desktop server (Samba, Ubuntu))
+SMB1 disabled -- no workgroup available
+aadish@aadish-desktop:~/Desktop/gpt$ sudo nano /etc/samba/smb.conf
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl restart smbd nmbd
+aadish@aadish-desktop:~/Desktop/gpt$ systemctl status smbd nmbd
+● smbd.service - Samba SMB Daemon
+     Loaded: loaded (/usr/lib/systemd/system/smbd.service; enabled; preset: e>
+     Active: active (running) since Sun 2025-03-30 00:42:29 IST; 5s ago
+ Invocation: 186b14c823c44c3cbf5db602e5256ab0
+       Docs: man:smbd(8)
+             man:samba(7)
+             man:smb.conf(5)
+    Process: 12873 ExecCondition=/usr/share/samba/is-configured smb (code=exi>
+    Process: 12876 ExecStartPre=/usr/share/samba/update-apparmor-samba-profil>
+   Main PID: 12886 (smbd)
+     Status: "smbd: ready to serve connections..."
+      Tasks: 3 (limit: 9063)
+     Memory: 7.8M (peak: 8.2M)
+        CPU: 217ms
+     CGroup: /system.slice/smbd.service
+             ├─12886 /usr/sbin/smbd --foreground --no-process-group
+             ├─12889 "smbd: notifyd" .
+             └─12890 "smbd: cleanupd "
+
+Mar 30 00:42:29 aadish-desktop systemd[1]: Starting smbd.service - Samba SMB >
+Mar 30 00:42:29 aadish-desktop systemd[1]: Started smbd.service - Samba SMB D>
+
+● nmbd.service - Samba NMB Daemon
+     Loaded: loaded (/usr/lib/systemd/system/nmbd.service; enabled; preset: e>
+     Active: active (running) since Sun 2025-03-30 00:42:29 IST; 5s ago
+ Invocation: 4b7791f532ff462fbb93b59b2d00ee0c
+       Docs: man:nmbd(8)
+             man:samba(7)
+             man:smb.conf(5)
+    Process: 12866 ExecCondition=/usr/share/samba/is-configured nmb (code=exi>
+   Main PID: 12871 (nmbd)
+     Status: "nmbd: ready to serve connections..."
+      Tasks: 1 (limit: 9063)
+     Memory: 2.9M (peak: 3.2M)
+        CPU: 136ms
+
+aadish@aadish-desktop:~/Desktop/gpt$ smbclient -L localhost -U aadish       
+Password for [WORKGROUP\aadish]:
+
+	Sharename       Type      Comment
+	---------       ----      -------
+	print$          Disk      Printer Drivers
+	Shared          Disk      
+	IPC$            IPC       IPC Service (aadish-desktop server (Samba, Ubuntu))
+Reconnecting with SMB1 for workgroup listing.
+
+	Server               Comment
+	---------            -------
+
+	Workgroup            Master
+	---------            -------
+	WORKGROUP            
+aadish@aadish-desktop:~/Desktop/gpt$ sudo smdpasswd -a akshat
+sudo: smdpasswd: command not found
+aadish@aadish-desktop:~/Desktop/gpt$ sudo smbpasswd -a akshat
+New SMB password:
+Retype new SMB password:
+Failed to add entry for user akshat.
+aadish@aadish-desktop:~/Desktop/gpt$ id akshat
+id: ‘akshat’: no such user
+aadish@aadish-desktop:~/Desktop/gpt$ sudo nano /etc/samba/smb.conf
+aadish@aadish-desktop:~/Desktop/gpt$ sudo service smbd restart
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw allow samba
+Skipping adding existing rule
+Skipping adding existing rule (v6)
+aadish@aadish-desktop:~/Desktop/gpt$ sudo smbpasswd -a aadish
+New SMB password:
+Retype new SMB password:
+aadish@aadish-desktop:~/Desktop/gpt$ sudo apt install samba
+samba is already the newest version (2:4.20.4+dfsg-1ubuntu1).
+The following package was automatically installed and is no longer required:
+  python3-netifaces
+Use 'sudo apt autoremove' to remove it.
+
+Summary:
+  Upgrading: 0, Installing: 0, Removing: 0, Not Upgrading: 12
+aadish@aadish-desktop:~/Desktop/gpt$ sudo apt update
+Hit:1 http://ports.ubuntu.com/ubuntu-ports oracular InRelease
+Hit:2 http://ports.ubuntu.com/ubuntu-ports oracular-updates InRelease
+Hit:3 http://ports.ubuntu.com/ubuntu-ports oracular-backports InRelease
+Hit:4 http://ports.ubuntu.com/ubuntu-ports oracular-security InRelease
+12 packages can be upgraded. Run 'apt list --upgradable' to see them.
+aadish@aadish-desktop:~/Desktop/gpt$ sudo apt upgrade
+The following package was automatically installed and is no longer required:
+  python3-netifaces
+Use 'sudo apt autoremove' to remove it.
+
+Upgrading:
+  ghostscript           libdw1t64     libgs10         linux-libc-dev
+  libdebuginfod-common  libelf1t64    libgs10-common  python3-jinja2
+  libdebuginfod1t64     libgs-common  libxslt1.1      tzdata
+
+Summary:
+  Upgrading: 12, Installing: 0, Removing: 0, Not Upgrading: 0
+12 standard LTS security updates
+  Download size: 6978 kB
+  Space needed: 176 kB / 448 GB available
+
+Continue? [Y/n] y
+Ign:1 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libdebuginfod-common all 0.191-2ubuntu0.1
+Get:2 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libdebuginfod1t64 arm64 0.191-2ubuntu0.1 [16.2 kB]
+Get:3 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libdw1t64 arm64 0.191-2ubuntu0.1 [264 kB]
+Get:4 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libelf1t64 arm64 0.191-2ubuntu0.1 [59.7 kB]
+Get:5 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 tzdata all 2025a-0ubuntu0.24.10 [275 kB]
+Get:6 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 ghostscript arm64 10.03.1~dfsg1-0ubuntu2.2 [43.6 kB]
+Get:7 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libgs10 arm64 10.03.1~dfsg1-0ubuntu2.2 [3605 kB]
+Get:8 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libgs10-common all 10.03.1~dfsg1-0ubuntu2.2 [488 kB]
+Get:9 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libgs-common all 10.03.1~dfsg1-0ubuntu2.2 [176 kB]
+Get:10 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libxslt1.1 arm64 1.1.39-0exp1ubuntu1.2 [168 kB]
+Get:11 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 linux-libc-dev arm64 6.11.0-21.21 [1761 kB]
+Get:12 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 python3-jinja2 all 3.1.3-1ubuntu1.24.10.2 [108 kB]
+Get:1 http://ports.ubuntu.com/ubuntu-ports oracular-security/main arm64 libdebuginfod-common all 0.191-2ubuntu0.1 [14.9 kB]
+Fetched 6978 kB in 46s (153 kB/s)                                            
+Preconfiguring packages ...
+(Reading database ... 140610 files and directories currently installed.)
+Preparing to unpack .../00-libdebuginfod-common_0.191-2ubuntu0.1_all.deb ...
+Unpacking libdebuginfod-common (0.191-2ubuntu0.1) over (0.191-2) ...
+Preparing to unpack .../01-libdebuginfod1t64_0.191-2ubuntu0.1_arm64.deb ...
+Unpacking libdebuginfod1t64:arm64 (0.191-2ubuntu0.1) over (0.191-2) ...
+Preparing to unpack .../02-libdw1t64_0.191-2ubuntu0.1_arm64.deb ...
+Unpacking libdw1t64:arm64 (0.191-2ubuntu0.1) over (0.191-2) ...
+Preparing to unpack .../03-libelf1t64_0.191-2ubuntu0.1_arm64.deb ...
+Unpacking libelf1t64:arm64 (0.191-2ubuntu0.1) over (0.191-2) ...
+Preparing to unpack .../04-tzdata_2025a-0ubuntu0.24.10_all.deb ...
+Unpacking tzdata (2025a-0ubuntu0.24.10) over (2024b-1ubuntu2.2) ...
+Preparing to unpack .../05-ghostscript_10.03.1~dfsg1-0ubuntu2.2_arm64.deb ...
+Unpacking ghostscript (10.03.1~dfsg1-0ubuntu2.2) over (10.03.1~dfsg1-0ubuntu2.
+1) ...
+Preparing to unpack .../06-libgs10_10.03.1~dfsg1-0ubuntu2.2_arm64.deb ...
+Unpacking libgs10:arm64 (10.03.1~dfsg1-0ubuntu2.2) over (10.03.1~dfsg1-0ubuntu
+2.1) ...
+Preparing to unpack .../07-libgs10-common_10.03.1~dfsg1-0ubuntu2.2_all.deb ...
+Unpacking libgs10-common (10.03.1~dfsg1-0ubuntu2.2) over (10.03.1~dfsg1-0ubunt
+u2.1) ...
+Preparing to unpack .../08-libgs-common_10.03.1~dfsg1-0ubuntu2.2_all.deb ...
+Unpacking libgs-common (10.03.1~dfsg1-0ubuntu2.2) over (10.03.1~dfsg1-0ubuntu2
+.1) ...
+Preparing to unpack .../09-libxslt1.1_1.1.39-0exp1ubuntu1.2_arm64.deb ...
+Unpacking libxslt1.1:arm64 (1.1.39-0exp1ubuntu1.2) over (1.1.39-0exp1ubuntu1) 
+...
+Preparing to unpack .../10-linux-libc-dev_6.11.0-21.21_arm64.deb ...
+Unpacking linux-libc-dev:arm64 (6.11.0-21.21) over (6.11.0-19.19) ...
+Preparing to unpack .../11-python3-jinja2_3.1.3-1ubuntu1.24.10.2_all.deb ...
+Unpacking python3-jinja2 (3.1.3-1ubuntu1.24.10.2) over (3.1.3-1ubuntu1.24.10.1
+) ...
+Setting up libdebuginfod-common (0.191-2ubuntu0.1) ...
+Setting up libgs-common (10.03.1~dfsg1-0ubuntu2.2) ...
+Setting up linux-libc-dev:arm64 (6.11.0-21.21) ...
+Setting up libelf1t64:arm64 (0.191-2ubuntu0.1) ...
+Setting up libdw1t64:arm64 (0.191-2ubuntu0.1) ...
+Setting up tzdata (2025a-0ubuntu0.24.10) ...
+
+Current default time zone: 'Asia/Kolkata'
+Local time is now:      Sun Mar 30 00:55:40 IST 2025.
+Universal Time is now:  Sat Mar 29 19:25:40 UTC 2025.
+Run 'dpkg-reconfigure tzdata' if you wish to change it.
+
+Setting up python3-jinja2 (3.1.3-1ubuntu1.24.10.2) ...
+Setting up libxslt1.1:arm64 (1.1.39-0exp1ubuntu1.2) ...
+Setting up libgs10-common (10.03.1~dfsg1-0ubuntu2.2) ...
+Setting up libdebuginfod1t64:arm64 (0.191-2ubuntu0.1) ...
+Setting up libgs10:arm64 (10.03.1~dfsg1-0ubuntu2.2) ...
+Setting up ghostscript (10.03.1~dfsg1-0ubuntu2.2) ...
+Processing triggers for libc-bin (2.40-1ubuntu3.1) ...
+Processing triggers for man-db (2.12.1-3) ...
+aadish@aadish-desktop:~/Desktop/gpt$ sudo nano /etc/samba/smb.conf
+aadish@aadish-desktop:~/Desktop/gpt$ ls -al /home/aadish/shared
+total 8
+drwxrwxrwx  2 aadish aadish 4096 Mar 29 23:13 .
+drwxr-x--- 18 aadish aadish 4096 Mar 29 23:13 ..
+aadish@aadish-desktop:~/Desktop/gpt$ mkdir -p /home/aadish/shared
+aadish@aadish-desktop:~/Desktop/gpt$ ls -al /home/aadish/shared
+total 8
+drwxrwxrwx  2 aadish aadish 4096 Mar 29 23:13 .
+drwxr-x--- 18 aadish aadish 4096 Mar 29 23:13 ..
+aadish@aadish-desktop:~/Desktop/gpt$ sudo -R 0775 /home/samba/shared
+sudo: /home/samba/shared: No such file or directory
+aadish@aadish-desktop:~/Desktop/gpt$ sudo -R 0775 /home/aadish/shared
+sudo: /home/aadish/shared: No such file or directory
+aadish@aadish-desktop:~/Desktop/gpt$ ls -al /home/aadish/
+total 92
+drwxr-x--- 18 aadish aadish 4096 Mar 29 23:13 .
+drwxr-xr-x  3 root   root   4096 Mar 10 21:45 ..
+-rw-------  1 aadish aadish 3622 Mar 29 22:50 .bash_history
+-rw-r--r--  1 aadish aadish  220 Mar 10 21:45 .bash_logout
+-rw-r--r--  1 aadish aadish 3771 Mar 10 21:45 .bashrc
+drwx------ 17 aadish aadish 4096 Mar 29 23:28 .cache
+drwx------ 14 aadish aadish 4096 Mar 10 23:49 .config
+-rw-rw-r--  1 aadish aadish  126 Mar 11 21:05 .gitconfig
+drwx------  2 aadish aadish 4096 Mar 29 22:51 .gnupg
+drwxrwxr-x  2 aadish aadish 4096 Mar 10 23:27 .keras
+drwx------  4 aadish aadish 4096 Mar 10 21:48 .local
+-rw-r--r--  1 aadish aadish  807 Mar 10 21:45 .profile
+drwx------  2 aadish aadish 4096 Mar 29 22:51 .ssh
+-rw-r--r--  1 aadish aadish    0 Mar 10 21:57 .sudo_as_admin_successful
+drwxr-xr-x  3 aadish aadish 4096 Mar 11 20:24 Desktop
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Documents
+drwxr-xr-x  2 aadish aadish 4096 Mar 29 23:03 Downloads
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Music
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Pictures
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Public
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Templates
+drwxr-xr-x  2 aadish aadish 4096 Mar 10 21:48 Videos
+drwxrwxrwx  2 aadish aadish 4096 Mar 29 23:13 shared
+drwx------  6 aadish aadish 4096 Mar 29 22:51 snap
+aadish@aadish-desktop:~/Desktop/gpt$ sudo adduser try
+info: Adding user `try' ...
+info: Selecting UID/GID from range 1000 to 59999 ...
+info: Adding new group `try' (1001) ...
+info: Adding new user `try' (1001) with group `try (1001)' ...
+info: Creating home directory `/home/try' ...
+info: Copying files from `/etc/skel' ...
+New password: 
+BAD PASSWORD: The password is shorter than 8 characters
+Retype new password: 
+passwd: password updated successfully
+Changing the user information for try
+Enter the new value, or press ENTER for the default
+	Full Name []:    
+	Room Number []: 
+	Work Phone []: 
+	Home Phone []: 
+	Other []: 
+Is the information correct? [Y/n] y
+info: Adding new user `try' to supplemental / extra groups `users' ...
+info: Adding user `try' to group `users' ...
+aadish@aadish-desktop:~/Desktop/gpt$ sudo smdpasswd -a try
+sudo: smdpasswd: command not found
+aadish@aadish-desktop:~/Desktop/gpt$ sudo smbpasswd -a try
+New SMB password:
+Retype new SMB password:
+Added user try.
+aadish@aadish-desktop:~/Desktop/gpt$ sudo chown -R try:try /home/samba/share
+chown: cannot access '/home/samba/share': No such file or directory
+aadish@aadish-desktop:~/Desktop/gpt$ sudo chown -R try:try /home/samba/shared
+chown: cannot access '/home/samba/shared': No such file or directory
+aadish@aadish-desktop:~/Desktop/gpt$ sudo chown -R try:try /home/aadish/sharedaadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl smbd.servcie
+Unknown command verb 'smbd.servcie'.
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl status  smbd.servcie
+Unit smbd.servcie.service could not be found.
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl status smbd.servcie
+Unit smbd.servcie.service could not be found.
+aadish@aadish-desktop:~/Desktop/gpt$ dpkg -l | grep samba
+ii  libldb2:arm64                                 2:2.9.1+samba4.20.4+dfsg-1ubuntu1        arm64        LDAP-like embedded database - shared library
+ii  python3-ldb                                   2:2.9.1+samba4.20.4+dfsg-1ubuntu1        arm64        Python 3 bindings for LDB
+ii  python3-samba                                 2:4.20.4+dfsg-1ubuntu1                   arm64        Python 3 bindings for Samba
+ii  samba                                         2:4.20.4+dfsg-1ubuntu1                   arm64        SMB/CIFS file, print, and login server for Unix
+ii  samba-common                                  2:4.20.4+dfsg-1ubuntu1                   all          common files used by both the Samba server and client
+ii  samba-common-bin                              2:4.20.4+dfsg-1ubuntu1                   arm64        Samba common files used by both the server and the client
+ii  samba-libs:arm64                              2:4.20.4+dfsg-1ubuntu1                   arm64        Samba core libraries
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl status smbd
+● smbd.service - Samba SMB Daemon
+     Loaded: loaded (/usr/lib/systemd/system/smbd.service; enabled; preset: e>
+     Active: active (running) since Sun 2025-03-30 00:49:39 IST; 18min ago
+ Invocation: 501688a2bed54bfe8d4d9b30b575842f
+       Docs: man:smbd(8)
+             man:samba(7)
+             man:smb.conf(5)
+    Process: 13090 ExecCondition=/usr/share/samba/is-configured smb (code=exi>
+    Process: 13093 ExecStartPre=/usr/share/samba/update-apparmor-samba-profil>
+   Main PID: 13103 (smbd)
+     Status: "smbd: ready to serve connections..."
+      Tasks: 4 (limit: 9063)
+     Memory: 9.2M (peak: 9.9M)
+        CPU: 290ms
+     CGroup: /system.slice/smbd.service
+             ├─13103 /usr/sbin/smbd --foreground --no-process-group
+             ├─13106 "smbd: notifyd" .
+             ├─13107 "smbd: cleanupd "
+             └─13165 "smbd: client [192.168.9.138]"
+
+Mar 30 00:49:39 aadish-desktop systemd[1]: Starting smbd.service - Samba SMB >
+Mar 30 00:49:39 aadish-desktop systemd[1]: Started smbd.service - Samba SMB D>
+Mar 30 00:51:15 aadish-desktop smbd[13165]: pam_unix(samba:session): session >
+
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufc status
+sudo: ufc: command not found
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw status
+Status: inactive
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl start smbd
+aadish@aadish-desktop:~/Desktop/gpt$ sudo systemctl enable smbd
+Synchronizing state of smbd.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable smbd
+aadish@aadish-desktop:~/Desktop/gpt$ testparm
+Load smb config files from /etc/samba/smb.conf
+Loaded services file OK.
+Weak crypto is allowed by GnuTLS (e.g. NTLM as a compatibility fallback)
+
+Server role: ROLE_STANDALONE
+
+Press enter to see a dump of your service definitions
+
+# Global parameters
+[global]
+	client min protocol = NT1
+	log file = /var/log/samba/log.%m
+	logging = file
+	map to guest = Bad User
+	max log size = 1000
+	obey pam restrictions = Yes
+	pam password change = Yes
+	panic action = /usr/share/samba/panic-action %d
+	passwd chat = *Enter\snew\s*\spassword:* %n\n *Retype\snew\s*\spassword:* %n\n *password\supdated\ssuccessfully* .
+	passwd program = /usr/bin/passwd %u
+	server min protocol = NT1
+	server role = standalone server
+	server string = %h server (Samba, Ubuntu)
+	unix password sync = Yes
+	usershare allow guests = Yes
+	idmap config * : backend = tdb
+
+
+[printers]
+	browseable = No
+	comment = All Printers
+	create mask = 0700
+	path = /var/tmp
+	printable = Yes
+
+
+[print$]
+	comment = Printer Drivers
+	path = /var/lib/samba/printers
+
+
+[Shared]
+	comment = samba on ubuntu
+	path = /home/aadish/shared
+	read only = No
+aadish@aadish-desktop:~/Desktop/gpt$ sudo chmod -R 777 /home/aadish/shared
+sudo chown -R aadish:aadish /home/aadish/shared
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw status
+Status: inactive
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw active
+ERROR: Invalid syntax
+
+Usage: ufw COMMAND
+
+Commands:
+ enable                          enables the firewall
+ disable                         disables the firewall
+ default ARG                     set default policy
+ logging LEVEL                   set logging to LEVEL
+ allow ARGS                      add allow rule
+ deny ARGS                       add deny rule
+ reject ARGS                     add reject rule
+ limit ARGS                      add limit rule
+ delete RULE|NUM                 delete RULE
+ insert NUM RULE                 insert RULE at NUM
+ prepend RULE                    prepend RULE
+ route RULE                      add route RULE
+ route delete RULE|NUM           delete route RULE
+ route insert NUM RULE           insert route RULE at NUM
+ reload                          reload firewall
+ reset                           reset firewall
+ status                          show firewall status
+ status numbered                 show firewall status as numbered list of RULES
+ status verbose                  show verbose firewall status
+ show ARG                        show firewall report
+ version                         display version information
+
+Application profile commands:
+ app list                        list application profiles
+ app info PROFILE                show information on PROFILE
+ app update PROFILE              update PROFILE
+ app default ARG                 set default application policy
+
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw enable
+Firewall is active and enabled on system startup
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw active
+ERROR: Invalid syntax
+
+Usage: ufw COMMAND
+
+Commands:
+ enable                          enables the firewall
+ disable                         disables the firewall
+ default ARG                     set default policy
+ logging LEVEL                   set logging to LEVEL
+ allow ARGS                      add allow rule
+ deny ARGS                       add deny rule
+ reject ARGS                     add reject rule
+ limit ARGS                      add limit rule
+ delete RULE|NUM                 delete RULE
+ insert NUM RULE                 insert RULE at NUM
+ prepend RULE                    prepend RULE
+ route RULE                      add route RULE
+ route delete RULE|NUM           delete route RULE
+ route insert NUM RULE           insert route RULE at NUM
+ reload                          reload firewall
+ reset                           reset firewall
+ status                          show firewall status
+ status numbered                 show firewall status as numbered list of RULES
+ status verbose                  show verbose firewall status
+ show ARG                        show firewall report
+ version                         display version information
+
+Application profile commands:
+ app list                        list application profiles
+ app info PROFILE                show information on PROFILE
+ app update PROFILE              update PROFILE
+ app default ARG                 set default application policy
+
+aadish@aadish-desktop:~/Desktop/gpt$ sudo ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+Samba                      ALLOW       Anywhere                  
+Samba (v6)                 ALLOW       Anywhere (v6)             
+
+aadish@aadish-desktop:~/Desktop/gpt$ cd /home/aadish/shared/
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'
+aadish@aadish-desktop:~/shared$ ls -al
+total 2024
+drwxrwxrwx  2 aadish aadish    4096 Mar 30 01:15  .
+drwxr-x--- 18 aadish aadish    4096 Mar 29 23:13  ..
+-rwxr--r--  1 aadish aadish 2061845 Jan 18 17:57 '1BM23AS304, 1BM23EC309.pdf'
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'   python-3.13.2-amd64.exe
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'              python-3.13.2-amd64.exe
+ Anaconda3-2024.10-1-Windows-x86_64.exe
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'              python-3.13.2-amd64.exe
+ Anaconda3-2024.10-1-Windows-x86_64.exe
+aadish@aadish-desktop:~/shared$ 
+aadish@aadish-desktop:~/shared$ ls
+'1BM23AS304, 1BM23EC309.pdf'              python-3.13.2-amd64.exe
+ Anaconda3-2024.10-1-Windows-x86_64.exe
+aadish@aadish-desktop:~/shared$ 
+
