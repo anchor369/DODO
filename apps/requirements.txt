@@ -1,3 +1,5 @@
 pystray
+pyttsx3
+SpeechRecognition
 Pillow
 pywin32; sys_platform == 'win32'
