@@ -14,6 +14,8 @@ import tkinter as tk
 import re
 import json
 import requests
+import queue
+import concurrent.futures
 
 class VoiceFileManager:
     def __init__(self):
@@ -115,137 +117,93 @@ class VoiceFileManager:
                 drives.append(f"{letter}:")
             bitmask >>= 1
         return drives
-    
-    def parse_command_with_nlp(self, command):
-        """
-        Enhanced command parser with better pattern matching and validation
-        """
+
+    def parse_command(self, command):
+        """Parse user command using simple NLP techniques"""
         try:
             command = command.lower().strip()
+            
+            # Initialize response structure
             response = {
                 "intent": "unknown",
                 "item_name": None,
                 "source": self.current_drive,
                 "destination": None
             }
-
-            # Clean up common speech artifacts
-            command = re.sub(r"\b(?:please|kindly|would you)\b", "", command)
             
-            # Predefined patterns with priority
-            patterns = [
-                # Pattern 1: "copy <item> from <source> to <destination>"
-                {
-                    "regex": r"^(copy|move|share|cut)\s+(.+?)\s+from\s+([a-z])(?:\s+drive)?\s+to\s+([a-z])(?:\s+drive)?$",
-                    "groups": ["intent", "item_name", "source", "destination"]
-                },
-                # Pattern 2: "copy <item> to <destination>"
-                {
-                    "regex": r"^(copy|move|share|cut)\s+(.+?)\s+to\s+([a-z])(?:\s+drive)?$",
-                    "groups": ["intent", "item_name", "destination"]
-                },
-                # Pattern 3: "copy <item> from <source>"
-                {
-                    "regex": r"^(copy|move|share|cut)\s+(.+?)\s+from\s+([a-z])(?:\s+drive)?$",
-                    "groups": ["intent", "item_name", "source"]
-                },
-                # Pattern 4: "share <item>"
-                {
-                    "regex": r"^share\s+(.+?)(?:\s+on\s+shared)?$",
-                    "groups": ["intent", "item_name"],
-                    "defaults": {"destination": self.mapped_drive_letter}
-                },
-                # Pattern 5: "cut <item> to <destination>"
-                {
-                    "regex": r"^cut\s+(.+?)\s+to\s+([a-z])(?:\s+drive)?$",
-                    "groups": ["intent", "item_name", "destination"]
-                }
-            ]
-
-            for pattern in patterns:
-                match = re.match(pattern["regex"], command)
-                if match:
-                    groups = match.groups()
-                    
-                    # Set values from matched groups
-                    for i, group_name in enumerate(pattern["groups"]):
-                        if group_name == "intent":
-                            response[group_name] = groups[i]
-                        elif group_name == "item_name":
-                            # Clean item name from command artifacts
-                            item = groups[i].replace(" folder", "").replace(" directory", "").replace(" file", "").strip()
-                            response[group_name] = item
-                        elif group_name in ("source", "destination"):
-                            if groups[i]:
-                                response[group_name] = f"{groups[i].upper()}:"
-                    
-                    # Apply defaults if needed
-                    if "defaults" in pattern:
-                        for k, v in pattern["defaults"].items():
-                            response[k] = v
-                    
-                    # Validate drive formats
-                    if response["source"] and len(response["source"]) == 1:
-                        response["source"] += ":"
-                    if response["destination"] and len(response["destination"]) == 1:
-                        response["destination"] += ":"
-                    
-                    # Final validation
-                    if response["intent"] in ("copy", "move", "cut") and not response["item_name"]:
-                        continue  # Skip invalid matches
-                    
-                    return response
-
-            # Fallback: Advanced component extraction
-            components = {
-                "actions": ["copy", "move", "share", "cut", "paste"],
-                "prepositions": ["from", "to", "into", "on"]
-            }
+            # FIND COMMANDS - Check these first with high priority
+            find_keywords = ["find", "search", "locate", "look for", "where is", "where are"]
             
-            # Split command into meaningful parts
-            parts = re.split(r"\s+(?=" + "|".join(components["prepositions"]) + ")", command)
-            
-            if len(parts) >= 2:
-                # First part contains action and item
-                action_part = parts[0].split()
-                response["intent"] = action_part[0]
-                if response["intent"] != "paste":
-                    response["item_name"] = " ".join(action_part[1:]).strip()
+            if any(keyword in command for keyword in find_keywords):
+                response["intent"] = "find"
                 
-                # Process subsequent parts
-                current_field = None
-                for part in parts[1:]:
-                    key_value = part.split(maxsplit=1)
-                    preposition = key_value[0]
-                    value = key_value[1] if len(key_value) > 1 else ""
-                    
-                    if preposition == "from":
-                        current_field = "source"
-                    elif preposition in ("to", "into", "on"):
-                        current_field = "destination"
-                    
-                    if current_field:
-                        # Extract drive letter or path
-                        drive_match = re.search(r"([a-z])\s+drive", value)
-                        if drive_match:
-                            response[current_field] = f"{drive_match.group(1).upper()}:"
-                        elif value:
-                            response[current_field] = value.strip()
-
-            # Post-processing
-            if response["item_name"]:
-                response["item_name"] = re.sub(r"\b(?:folder|directory|file)\b", "", response["item_name"]).strip()
+                # Extract item name after the find keyword
+                for keyword in find_keywords:
+                    if keyword in command:
+                        parts = command.split(keyword, 1)
+                        if len(parts) > 1:
+                            item_name = parts[1].strip()
+                            # Clean up common words
+                            for word in ["for", "my", "the", "folder", "file", "directory", "document"]:
+                                item_name = item_name.replace(f" {word} ", " ").replace(f" {word}", "")
+                            response["item_name"] = item_name.strip()
+                            return response
             
-            # Convert single-letter drives
-            for field in ("source", "destination"):
-                if response[field] and len(response[field]) == 1:
-                    response[field] += ":"
+            # COPY, MOVE, CUT, SHARE COMMANDS
+            if any(action in command for action in ["copy", "move", "cut", "share"]):
+                # Determine the action/intent
+                if "copy" in command:
+                    response["intent"] = "copy"
+                elif "move" in command:
+                    response["intent"] = "move"
+                elif "cut" in command:
+                    response["intent"] = "cut"
+                elif "share" in command:
+                    response["intent"] = "share"
+                    response["destination"] = self.mapped_drive_letter
+                
+                # Pattern: "<action> <item> from <source> to <destination>"
+                pattern1 = r"(copy|move|cut|share)\s+(.+?)\s+from\s+([a-z])\s+(?:drive\s+)?to\s+([a-z])\s+(?:drive)?"
+                match = re.search(pattern1, command)
+                if match:
+                    response["item_name"] = match.group(2).strip()
+                    response["source"] = f"{match.group(3).upper()}:"
+                    response["destination"] = f"{match.group(4).upper()}:"
+                    return response
+                
+                # Pattern: "<action> <item> to <destination>"
+                pattern2 = r"(copy|move|cut|share)\s+(.+?)\s+to\s+([a-z])\s+(?:drive)?"
+                match = re.search(pattern2, command)
+                if match:
+                    response["item_name"] = match.group(2).strip()
+                    response["destination"] = f"{match.group(3).upper()}:"
+                    return response
+                
+                # Pattern: "<action> <item> from <source>"
+                pattern3 = r"(copy|move|cut|share)\s+(.+?)\s+from\s+([a-z])\s+(?:drive)?"
+                match = re.search(pattern3, command)
+                if match:
+                    response["item_name"] = match.group(2).strip()
+                    response["source"] = f"{match.group(3).upper()}:"
+                    return response
+                
+                # Pattern: "<action> <item>"
+                pattern4 = r"(copy|move|cut|share)\s+(.+)"
+                match = re.search(pattern4, command)
+                if match:
+                    response["item_name"] = match.group(2).strip()
+                    return response
+            
+            # Clean item name from common words if it exists
+            if response["item_name"]:
+                # Remove words like "folder", "file", etc.
+                response["item_name"] = re.sub(r"\b(folder|file|directory|document)s?\b", "", response["item_name"]).strip()
             
             return response
-
+            
         except Exception as e:
-            print(f"Parsing error: {str(e)}")
-            return {"intent": "error", "message": "Failed to parse command"}
+            print(f"Error parsing command: {str(e)}")
+            return {"intent": "error", "message": f"Failed to parse: {str(e)}"}
     
     def resolve_path(self, item_name, drive_letter):
         """Resolve the full path for an item on a specified drive"""
@@ -273,6 +231,154 @@ class VoiceFileManager:
                     return os.path.join(root, file)
         
         return None
+
+    def search_drive(self, drive, item_name, result_queue, max_results=5):
+        """Search a specific drive for files/folders matching item_name"""
+        try:
+            count = 0
+            drive_results = []
+            print(f"Started searching drive {drive}...")
+            
+            # Check if drive exists and is accessible
+            if not os.path.exists(f"{drive}\\"):
+                print(f"Drive {drive} is not accessible")
+                return
+            
+            search_term = item_name.lower()
+            
+            # Set a timeout to prevent very long searches
+            start_time = time.time()
+            max_search_time = 30  # Max 30 seconds per drive
+            
+            # Walk the directory tree
+            for root, dirs, files in os.walk(drive + "\\"):
+                # Check if search is taking too long
+                if time.time() - start_time > max_search_time:
+                    print(f"Search timeout on drive {drive} after {max_search_time} seconds")
+                    if drive_results:
+                        drive_results.append(f"...search timeout after {max_search_time} seconds")
+                    break
+                
+                # Optimize search by skipping system directories
+                dirs[:] = [d for d in dirs if not d.startswith('$') and d not in ['System Volume Information', 'Windows']]
+                
+                # Check directories
+                for dir in dirs:
+                    if search_term in dir.lower():
+                        drive_results.append(os.path.join(root, dir))
+                        count += 1
+                        if count >= max_results:
+                            drive_results.append(f"...and more results on {drive}")
+                            result_queue.put((drive, drive_results))
+                            return
+                
+                # Check files
+                for file in files:
+                    if search_term in file.lower():
+                        drive_results.append(os.path.join(root, file))
+                        count += 1
+                        if count >= max_results:
+                            drive_results.append(f"...and more results on {drive}")
+                            result_queue.put((drive, drive_results))
+                            return
+            
+            # Add results to queue if any found
+            if drive_results:
+                print(f"Found {len(drive_results)} matches on drive {drive}")
+                result_queue.put((drive, drive_results))
+            else:
+                print(f"No matches found on drive {drive}")
+                
+        except PermissionError:
+            print(f"Permission error on drive {drive}")
+            pass
+        except Exception as e:
+            print(f"Error searching drive {drive}: {str(e)}")
+            pass
+
+    def find_item_across_drives(self, item_name):
+        """Search for an item across all available drives using parallel threads"""
+        print(f"Searching for '{item_name}' across all drives...")
+        self.speak(f"Searching for {item_name} across all drives. This might take a moment...")
+        
+        drives = self.get_available_drives()
+        result_queue = queue.Queue()
+        threads = []
+        max_workers = min(len(drives), 4)  # Limit to 4 concurrent threads to avoid overloading the system
+        
+        # Create thread pool
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit search tasks for each drive
+            future_to_drive = {
+                executor.submit(self.search_drive, drive, item_name, result_queue): drive
+                for drive in drives
+            }
+            
+            # Start a separate thread to provide progress updates to the user
+            progress_thread = threading.Thread(target=self.search_progress_reporter, args=(result_queue, len(drives)))
+            progress_thread.daemon = True
+            progress_thread.start()
+            
+            # Wait for all futures to complete (with timeout)
+            concurrent.futures.wait(future_to_drive, timeout=60)
+        
+        # Collect results from the queue
+        all_results = []
+        while not result_queue.empty():
+            drive, results = result_queue.get()
+            all_results.extend(results)
+        
+        return all_results
+
+    def search_progress_reporter(self, result_queue, total_drives):
+        """Report search progress while threads are working"""
+        drives_completed = set()
+        start_time = time.time()
+        
+        while len(drives_completed) < total_drives:
+            # Break if search is taking too long (over 60 seconds)
+            if time.time() - start_time > 60:
+                print("Search timed out after 60 seconds")
+                break
+                
+            # Check for new results
+            try:
+                drive, _ = result_queue.get(block=True, timeout=1)
+                drives_completed.add(drive)
+                print(f"Completed {len(drives_completed)}/{total_drives} drives")
+                result_queue.put((drive, _))  # Put the result back for collection later
+            except queue.Empty:
+                # No new results yet
+                pass
+            
+            # Sleep briefly to avoid burning CPU
+            time.sleep(0.1)
+    
+    def find_items_in_drive(self, drive, item_name):
+        """Find items matching the name in a specific drive - legacy method for compatibility"""
+        try:
+            # Check if drive exists and is accessible
+            if not os.path.exists(f"{drive}\\"):
+                return
+            
+            search_term = item_name.lower()
+            
+            # Walk the directory tree
+            for root, dirs, files in os.walk(drive + "\\"):
+                # Check directories
+                for dir in dirs:
+                    if search_term in dir.lower():
+                        yield os.path.join(root, dir)
+                
+                # Check files
+                for file in files:
+                    if search_term in file.lower():
+                        yield os.path.join(root, file)
+        except PermissionError:
+            # Skip directories we don't have permission to access
+            pass
+        except Exception as e:
+            print(f"Error in {drive}: {str(e)}")
     
     def copy_item(self, source_path, dest_path):
         """Copy a file or directory to the destination"""
@@ -346,9 +452,9 @@ class VoiceFileManager:
             return False, f"Permission denied when moving {os.path.basename(source_path)}"
         except Exception as e:
             return False, f"Error during move: {str(e)}"
-
+    
     def cut_item(self, item_name, source, destination):
-        """Cut an item from source to destination"""
+        """Cut (move) an item from source to destination"""
         try:
             source_path = self.resolve_path(item_name, source)
             dest_path = self.resolve_path(item_name, destination)
@@ -363,13 +469,11 @@ class VoiceFileManager:
                 else:
                     return False, f"Source {source_path} does not exist"
             
-            # Move (cut) the item directly to destination
+            # Move the item directly to destination
             return self.move_item(source_path, dest_path)
             
         except Exception as e:
             return False, f"Error during cut operation: {str(e)}"
-    
-    # Paste functionality is now handled directly by cut_item method that moves files directly to destination
     
     def execute_command(self, parsed_command):
         """Execute the parsed command"""
@@ -380,6 +484,55 @@ class VoiceFileManager:
         
         elif intent == "error":
             return False, f"Error processing command: {parsed_command.get('message')}"
+        
+        elif intent == "find":
+            item_name = parsed_command.get("item_name")
+            
+            # Debug information
+            print(f"Executing find command:")
+            print(f"  Item to find: {item_name}")
+            
+            if not item_name:
+                return False, "I couldn't determine what you're looking for. Please specify a file or folder name."
+                        
+            # Execute the search
+            found_locations = self.find_item_across_drives(item_name)
+            
+            if found_locations:
+                # Remove entries that are progress indicators
+                result_entries = [loc for loc in found_locations if not loc.startswith("...")]
+                num_results = len(result_entries)
+                
+                if num_results == 0:
+                    return False, f"Search was incomplete. Please try with a more specific term than '{item_name}'."
+                elif num_results == 1:
+                    location_message = f"I found {item_name} at: {result_entries[0]}"
+                    print(location_message)
+                    return True, location_message
+                else:
+                    # Summarize by drive for cleaner output
+                    drive_summary = {}
+                    for loc in result_entries:
+                        drive = loc[:2]  # Get the drive letter (e.g., "C:")
+                        if drive in drive_summary:
+                            drive_summary[drive] += 1
+                        else:
+                            drive_summary[drive] = 1
+                    
+                    summary = f"I found {num_results} matches for {item_name}. "
+                    summary += "Files/folders were found in: "
+                    summary += ", ".join([f"{count} matches on {drive}" for drive, count in drive_summary.items()])
+                    
+                    # Log detailed results
+                    print(f"Detailed results for '{item_name}':")
+                    for loc in result_entries[:10]:  # Show first 10 results
+                        print(f"  - {loc}")
+                    if len(result_entries) > 10:
+                        print(f"  ... and {len(result_entries) - 10} more")
+                    
+                    return True, summary
+            else:
+                return False, f"I couldn't find {item_name} on any drive. Please check the spelling or try another search term."
         
         elif intent in ["copy", "move", "share"]:
             item_name = parsed_command.get("item_name")
@@ -454,8 +607,8 @@ class VoiceFileManager:
                 self.disconnect_share()
                 break
             
-            # Parse the command using NLP
-            parsed_command = self.parse_command_with_nlp(command)
+            # Parse the command
+            parsed_command = self.parse_command(command)
             print(f"Parsed command: {parsed_command}")
             
             # Execute the command
@@ -469,6 +622,8 @@ class VoiceFileManager:
                 # Offer helpful suggestions
                 if parsed_command.get("intent") == "cut":
                     self.speak("To cut a file or folder, try saying 'cut Documents folder from C drive to D drive'.")
+                elif parsed_command.get("intent") == "find":
+                    self.speak("To find a file or folder, try saying 'find budget spreadsheet' or 'where is my presentation'.")
                 else:
                     self.speak("Try being more specific with your command. For example, 'copy Documents folder from C to D drive'.")
 
