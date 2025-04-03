@@ -20,11 +20,6 @@ import google.generativeai as genai
 
 class VoiceFileManager:
     def __init__(self):
-        self.server_ip = "192.168.9.63"  # FIB-By-Server
-        self.share_name = "Shared"
-        self.username = "aadish"  # FIB login username
-        self.password = "1234"  # FIB password
-        self.mapped_drive_letter = "S:"
         self.current_drive = os.getcwd()[:2]  # Get current drive (e.g., "C:")
         
         # Initialize Gemini LLM
@@ -172,38 +167,6 @@ class VoiceFileManager:
             print(f"Error communicating with LLM: {e}")
             # Fall back to rule-based parsing as backup
             return self.parse_command(command)
-
-    def connect_share(self):
-        """Connect to the network share"""
-        try:
-            # First disconnect if already connected
-            subprocess.run(f'net use {self.mapped_drive_letter} /delete /y', 
-                          shell=True, capture_output=True)
-            
-            # Connect to the share
-            share_path = f"\\\\{self.server_ip}\\{self.share_name}"
-            cmd = f'net use {self.mapped_drive_letter} {share_path} /user:{self.username} {self.password} /persistent:no'
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print(f"Connected to {self.share_name} on {self.server_ip}")
-                return True
-            else:
-                error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                print(f"Failed to connect: {error_msg}")
-                return False
-        except Exception as e:
-            print(f"Connection error: {str(e)}")
-            return False
-
-    def disconnect_share(self):
-        """Disconnect from the network share"""
-        try:
-            subprocess.run(f'net use {self.mapped_drive_letter} /delete /y', 
-                          shell=True, capture_output=True)
-            print("Disconnected from network share")
-        except Exception as e:
-            print(f"Error during disconnect: {str(e)}")
 
     def get_available_drives(self):
         """Get list of available drives on the system"""
@@ -1040,14 +1003,6 @@ def create_mutex():
         return mutex
     except:
         return None
-
-def check_network_connection():
-    """Verify internet connection for LLM services"""
-    try:
-        socket.create_connection(("www.google.com", 80), timeout=3)
-        return True
-    except OSError:
-        return False
 
 def show_splash_screen():
     """Display a splash screen while the application is loading"""
