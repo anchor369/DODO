@@ -37,9 +37,6 @@ class VoiceFileManager:
         self.recognizer.energy_threshold = 4000  # Adjust based on environment
         self.recognizer.dynamic_energy_threshold = True
         
-        # Connect to the share before starting the voice interaction
-        self.connect_share()
-        
         # Start the voice interaction
         self.run_voice_assistant()
 
@@ -1088,18 +1085,7 @@ def main():
                            "pip install SpeechRecognition pyttsx3 pyaudio google-generativeai")
         root.destroy()
         sys.exit(1)
-    
-    # Check for internet connection
-    if not check_network_connection():
-        root = tk.Tk()
-        root.withdraw()
-        response = messagebox.askquestion("No Internet Connection", 
-                                       "No internet connection detected. The AI features will not work.\n\n"
-                                       "Do you want to continue with limited functionality?")
-        root.destroy()
-        
-        if response == 'no':
-            sys.exit(0)
+
     
     try:
         app = VoiceFileManager()
