@@ -29,6 +29,17 @@ class ScreenAIAssistant:
         self.current_app_context = None
         self.message_queue = queue.Queue()
         
+        # Conversation tracking
+        self.conversation_history = []
+        self.current_context = {
+            "screen_understood": False,
+            "current_question": None,
+            "question_understood": False,
+            "awaiting_approach": False,
+            "last_ocr_text": "",
+            "question_type": None  # coding, math, text, etc.
+        }
+        
         # Initialize OCR
         pytesseract.pytesseract.tesseract_cmd = r'tesseract'  # Update path if needed
         
@@ -85,10 +96,12 @@ class ScreenAIAssistant:
         # Create tabs
         captured_tab = ttk.Frame(notebook)
         analysis_tab = ttk.Frame(notebook)
+        chat_tab = ttk.Frame(notebook)
         settings_tab = ttk.Frame(notebook)
         
         notebook.add(captured_tab, text="Captured Content")
         notebook.add(analysis_tab, text="AI Analysis")
+        notebook.add(chat_tab, text="Chat History")
         notebook.add(settings_tab, text="Settings")
         
         # Captured Content Tab
@@ -114,6 +127,23 @@ class ScreenAIAssistant:
         query_entry = ttk.Entry(query_frame, textvariable=self.query_var, width=50)
         query_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         ttk.Button(query_frame, text="Ask", command=self.send_manual_query).pack(side=tk.LEFT, padx=5)
+        
+        # Chat History Tab
+        self.chat_history = scrolledtext.ScrolledText(chat_tab, wrap=tk.WORD)
+        self.chat_history.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.chat_history.tag_config('user', foreground='blue')
+        self.chat_history.tag_config('assistant', foreground='green')
+        
+        # Quick command buttons
+        command_frame = ttk.Frame(chat_tab)
+        command_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Button(command_frame, text="What's this question?", 
+                  command=lambda: self.send_manual_query("What is the question or problem on my screen?")).pack(side=tk.LEFT, padx=5)
+        ttk.Button(command_frame, text="Give me an approach", 
+                  command=lambda: self.send_manual_query("What would be a good approach to solve this problem?")).pack(side=tk.LEFT, padx=5)
+        ttk.Button(command_frame, text="Clear Chat", 
+                  command=self.clear_chat_history).pack(side=tk.RIGHT, padx=5)
         
         # Settings Tab
         settings_frame = ttk.Frame(settings_tab, padding=10)
@@ -144,12 +174,32 @@ class ScreenAIAssistant:
         tesseract_entry = ttk.Entry(settings_frame, textvariable=self.tesseract_var, width=40)
         tesseract_entry.grid(row=3, column=1, sticky=tk.W, pady=5)
         
+        # Conversation flow settings
+        ttk.Label(settings_frame, text="Conversation Flow:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.flow_enabled_var = tk.BooleanVar(value=True)
+        flow_cb = ttk.Checkbutton(settings_frame, text="Enable Smart Conversation", variable=self.flow_enabled_var)
+        flow_cb.grid(row=4, column=1, sticky=tk.W, pady=5)
+        
         # Start message processing thread
         self.processing_thread = threading.Thread(target=self.process_messages, daemon=True)
         self.processing_thread.start()
         
         # Set up periodic UI updates
         self.root.after(100, self.update_ui)
+    
+    def clear_chat_history(self):
+        """Clear the chat history"""
+        self.chat_history.delete(1.0, tk.END)
+        self.conversation_history = []
+        # Reset context
+        self.current_context = {
+            "screen_understood": False,
+            "current_question": None,
+            "question_understood": False,
+            "awaiting_approach": False,
+            "last_ocr_text": "",
+            "question_type": None
+        }
     
     def update_ui(self):
         """Update UI elements periodically"""
@@ -224,12 +274,39 @@ class ScreenAIAssistant:
         else:
             logger.warning("No API key provided")
     
-    def send_manual_query(self):
+    def send_manual_query(self, predefined_query=None):
         """Send a manual query to the AI"""
-        query = self.query_var.get().strip()
+        query = predefined_query or self.query_var.get().strip()
         if query:
+            # Add to chat history
+            self.add_to_chat_history("User", query)
+            
+            # Process the query
             self.message_queue.put(("query", query))
             self.query_var.set("")
+    
+    def add_to_chat_history(self, speaker, message):
+        """Add a message to the chat history with formatting"""
+        self.chat_history.config(state=tk.NORMAL)
+        
+        # Add timestamp
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        self.chat_history.insert(tk.END, f"[{timestamp}] ", "timestamp")
+        
+        # Add speaker and message with appropriate tag
+        tag = 'user' if speaker == "User" else 'assistant'
+        self.chat_history.insert(tk.END, f"{speaker}: ", tag)
+        self.chat_history.insert(tk.END, f"{message}\n\n")
+        
+        # Scroll to the end
+        self.chat_history.see(tk.END)
+        
+        # Store in conversation history
+        self.conversation_history.append({
+            "role": "user" if speaker == "User" else "assistant",
+            "content": message,
+            "timestamp": timestamp
+        })
     
     def capture_loop(self):
         """Main loop for screen capture"""
@@ -263,6 +340,7 @@ class ScreenAIAssistant:
                 # Perform OCR
                 try:
                     ocr_text = pytesseract.image_to_string(screenshot)
+                    self.current_context["last_ocr_text"] = ocr_text
                     logger.info("OCR completed successfully")
                 except Exception as ocr_error:
                     ocr_text = "OCR Error: Could not extract text from image"
@@ -305,6 +383,9 @@ class ScreenAIAssistant:
                 try:
                     text = self.speech_recognizer.recognize_google(audio)
                     logger.info(f"Recognized: {text}")
+                    
+                    # Add to chat history
+                    self.root.after(0, lambda t=text: self.add_to_chat_history("User", t))
                     
                     # Process voice command
                     self.message_queue.put(("voice", text))
@@ -377,6 +458,9 @@ class ScreenAIAssistant:
             self.current_app_context = context
             logger.info(f"Context changed to: {context}")
             
+            # When context changes, reset some conversation state
+            self.current_context["screen_understood"] = False
+            
             # Generate initial AI analysis for the new context
             self.analyze_current_context()
     
@@ -384,26 +468,297 @@ class ScreenAIAssistant:
         """Update the OCR text display"""
         self.ocr_text.delete(1.0, tk.END)
         self.ocr_text.insert(tk.END, text)
-    
-    def process_voice_command(self, command):
-        """Process a voice command"""
-        # Simple keyword-based command processing
+        
+    def detect_query_intent(self, command):
+        """Detect the user's intent from their query"""
         command_lower = command.lower()
         
-        if "capture" in command_lower and "screen" in command_lower:
+        # Question about what's on screen
+        if any(phrase in command_lower for phrase in [
+            "what is this", "what am i looking at", "what's on my screen", 
+            "explain this", "analyze this"
+        ]):
+            return "analyze_screen"
+            
+        # Question about the problem/question
+        elif any(phrase in command_lower for phrase in [
+            "what is the question", "what is the problem", "what am i supposed to do",
+            "what's the task", "what's being asked"
+        ]):
+            return "identify_question"
+            
+        # Request for approach/solution
+        elif any(phrase in command_lower for phrase in [
+            "how do i solve this", "what's the approach", "how would you solve this",
+            "give me a solution", "help me solve this", "what should i do"
+        ]):
+            return "provide_approach"
+            
+        # Question about specific part of problem
+        elif any(phrase in command_lower for phrase in [
+            "what does this mean", "explain this part", "i don't understand this",
+            "clarify this", "what is this asking for"
+        ]):
+            return "explain_part"
+            
+        # Default: treat as general query
+        return "general_query"
+    
+    def process_voice_command(self, command):
+        """Process a voice command with contextual awareness"""
+        # Detect user intent
+        intent = self.detect_query_intent(command)
+        
+        if "capture" in command.lower() and "screen" in command.lower():
             if not self.capturing:
                 self.root.after(0, self.toggle_capture)
+                return
         
-        elif "stop" in command_lower and "capture" in command_lower:
+        elif "stop" in command.lower() and "capture" in command.lower():
             if self.capturing:
                 self.root.after(0, self.toggle_capture)
+                return
         
-        elif "analyze" in command_lower or "explain" in command_lower:
-            self.analyze_current_context(additional_query=command)
+        # Handle intents with conversation flow if enabled
+        if self.flow_enabled_var.get():
+            if intent == "analyze_screen":
+                self.analyze_current_context(additional_query=command)
+                self.current_context["screen_understood"] = True
+                return
+                
+            elif intent == "identify_question":
+                self.identify_question_from_screen()
+                return
+                
+            elif intent == "provide_approach":
+                self.provide_solution_approach()
+                return
+                
+            elif intent == "explain_part":
+                # Extract what part needs explanation if possible
+                part_to_explain = command.lower().replace("what does", "").replace("explain", "").replace("clarify", "").strip()
+                self.explain_specific_part(part_to_explain)
+                return
         
-        else:
-            # Treat as a general query about the current screen
-            self.process_text_query(command)
+        # Default: treat as general query if no specific flow matched
+        self.process_text_query(command)
+    
+    def identify_question_from_screen(self):
+        """Identify and explain the main question or problem on screen"""
+        if not self.last_capture:
+            response = "No screen capture available. Start capture first."
+            self.root.after(0, lambda: self.update_ai_output(response))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", response))
+            return
+            
+        # Get the most recent OCR text
+        ocr_text = self.current_context["last_ocr_text"]
+        
+        # Special prompt for identifying the main question
+        prompt = f"""
+        You are an assistant helping to identify the main question or problem from a screen capture.
+        
+        SCREEN CONTENT:
+        {ocr_text[:10000]}
+        
+        APPLICATION CONTEXT: {self.current_app_context}
+        
+        TASK:
+        Identify and clearly state what the main question or problem is from the screen content.
+        Focus specifically on extracting the core question or task that needs to be solved.
+        
+        RESPONSE GUIDELINES:
+        - Start with "The question is:" or "The problem asks:"
+        - Be direct and clear about what needs to be done
+        - Include any relevant constraints or requirements
+        - Avoid unnecessary explanations - just identify the question/problem
+        - Use simple language suitable for speech
+        - If you can't identify a clear question or problem, say so directly
+        """
+        
+        # Process with AI
+        try:
+            generation_config = {
+                "temperature": 0.3,  # Lower temperature for more focused responses on question identification
+                "top_p": 0.85,
+                "max_output_tokens": 1024,  # Shorter response for question identification
+            }
+            
+            response = self.model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+            
+            question = response.text.strip()
+            
+            # Update context with the identified question
+            self.current_context["current_question"] = question
+            self.current_context["question_understood"] = True
+            self.current_context["awaiting_approach"] = True
+            
+            # Update UI
+            self.root.after(0, lambda: self.update_ai_output(question))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", question))
+            
+            # Speak response if voice is enabled
+            if self.voice_enabled_var.get():
+                self.speak_text_in_chunks(question)
+                
+        except Exception as e:
+            error_message = f"Error identifying question: {str(e)}"
+            logger.error(error_message)
+            self.root.after(0, lambda: self.update_ai_output(error_message))
+    
+    def provide_solution_approach(self):
+        """Provide a solution approach for the identified question"""
+        if not self.last_capture:
+            response = "No screen capture available. Start capture first."
+            self.root.after(0, lambda: self.update_ai_output(response))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", response))
+            return
+            
+        # Get the most recent OCR text
+        ocr_text = self.current_context["last_ocr_text"]
+        
+        # Check if we already identified the question
+        question_context = ""
+        if self.current_context["question_understood"] and self.current_context["current_question"]:
+            question_context = f"""
+            PREVIOUSLY IDENTIFIED QUESTION:
+            {self.current_context["current_question"]}
+            """
+        
+        # Special prompt for providing a solution approach
+        prompt = f"""
+        You are an assistant helping to provide a solution approach for a problem.
+        
+        SCREEN CONTENT:
+        {ocr_text[:10000]}
+        
+        APPLICATION CONTEXT: {self.current_app_context}
+        
+        {question_context}
+        
+        TASK:
+        Provide a clear step-by-step approach to solve the problem shown on screen.
+        
+        RESPONSE GUIDELINES:
+        - Do NOT repeat the question/problem statement - jump straight to the solution approach
+        - Break down the solution into clear logical steps
+        - Explain the reasoning behind each step
+        - Use simple clear language suitable for text-to-speech conversion
+        - Avoid using commas semicolons colons or other punctuation when possible
+        - Use short sentences with natural pauses
+        - If this is a coding problem include pseudocode or actual code if appropriate
+        - If there are multiple approaches list the most efficient one first
+        - Keep explanations concise but complete
+        
+        Your response must be coherent focused on the solution approach only.
+        """
+        
+        # Process with AI
+        try:
+            generation_config = {
+                "temperature": 0.5,
+                "top_p": 0.85,
+                "max_output_tokens": 8192,
+            }
+            
+            # Use streamed response to handle long outputs
+            response_parts = []
+            
+            # Stream the response
+            for response_chunk in self.model.generate_content(
+                prompt,
+                generation_config=generation_config,
+                stream=True
+            ):
+                if response_chunk.text:
+                    response_parts.append(response_chunk.text)
+                    # Update UI with partial response
+                    partial_text = "".join(response_parts)
+                    self.root.after(0, lambda t=partial_text: self.update_ai_output_streaming(t))
+            
+            # Combine all chunks for the final response
+            approach = "".join(response_parts).strip()
+            
+            # Mark that we've provided an approach
+            self.current_context["awaiting_approach"] = False
+            
+            # Update UI with complete response
+            self.root.after(0, lambda: self.update_ai_output(approach))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", approach))
+            
+            # Speak response if voice is enabled
+            if self.voice_enabled_var.get():
+                self.speak_text_in_chunks(approach)
+                
+        except Exception as e:
+            error_message = f"Error providing solution approach: {str(e)}"
+            logger.error(error_message)
+            self.root.after(0, lambda: self.update_ai_output(error_message))
+    
+    def explain_specific_part(self, part_to_explain):
+        """Explain a specific part of the problem that the user is asking about"""
+        if not self.last_capture:
+            response = "No screen capture available. Start capture first."
+            self.root.after(0, lambda: self.update_ai_output(response))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", response))
+            return
+            
+        # Get the most recent OCR text
+        ocr_text = self.current_context["last_ocr_text"]
+        
+        # Special prompt for explaining a specific part
+        prompt = f"""
+        You are an assistant helping to explain a specific part of a problem.
+        
+        SCREEN CONTENT:
+        {ocr_text[:10000]}
+        
+        APPLICATION CONTEXT: {self.current_app_context}
+        
+        SPECIFIC PART TO EXPLAIN: {part_to_explain}
+        
+        TASK:
+        Explain the specific part of the problem that the user is asking about.
+        
+        RESPONSE GUIDELINES:
+        - Focus only on explaining the specific part mentioned
+        - Be clear and educational in your explanation
+        - Provide context if needed for understanding
+        - Use simple language suitable for speech
+        - Keep your explanation concise but thorough
+        - Avoid using commas semicolons colons or other punctuation when possible
+        """
+        
+        # Process with AI
+        try:
+            generation_config = {
+                "temperature": 0.4,
+                "top_p": 0.85,
+                "max_output_tokens": 2048,
+            }
+            
+            response = self.model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+            
+            explanation = response.text.strip()
+            
+            # Update UI
+            self.root.after(0, lambda: self.update_ai_output(explanation))
+            self.root.after(0, lambda: self.add_to_chat_history("Assistant", explanation))
+            
+            # Speak response if voice is enabled
+            if self.voice_enabled_var.get():
+                self.speak_text_in_chunks(explanation)
+                
+        except Exception as e:
+            error_message = f"Error explaining part: {str(e)}"
+            logger.error(error_message)
+            self.root.after(0, lambda: self.update_ai_output(error_message))
     
     def process_text_query(self, query):
         """Process a text query to the AI using Gemini"""
@@ -417,48 +772,59 @@ class ScreenAIAssistant:
         
         try:
             # Get the most recent OCR text
-            ocr_text = ""
-            try:
-                ocr_text = self.ocr_text.get(1.0, tk.END)
-            except:
-                pass
+            ocr_text = self.current_context["last_ocr_text"]
+            
+            # Check if we should use the contextual flow
+            if self.flow_enabled_var.get():
+                intent = self.detect_query_intent(query)
+                
+                if intent == "identify_question":
+                    self.identify_question_from_screen()
+                    return
+                elif intent == "provide_approach" and self.current_context["question_understood"]:
+                    self.provide_solution_approach()
+                    return
+                elif intent == "explain_part":
+                    part_to_explain = query.lower().replace("what does", "").replace("explain", "").replace("clarify", "").strip()
+                    self.explain_specific_part(part_to_explain)
+                    return
+            
+            # Default processing for general queries or when flow is disabled
             
             # Prepare improved prompt for Gemini
             prompt = f"""
-            You are a helpful AI assistant tasked with analyzing screen content and responding to user questions.
+            You are a helpful AI assistant that analyzes screen content and responds to user questions.
 
             SCREEN CONTENT:
-            {ocr_text}
+            {ocr_text[:10000]}
 
-            APPLICATION CONTEXT:
-            {self.current_app_context}
+            APPLICATION CONTEXT: {self.current_app_context}
 
-            USER QUESTION:
-            {query}
+            USER QUESTION: {query}
 
             RESPONSE GUIDELINES:
-            - Answer directly and conversationally about the content shown on the screen.
-            - Focus on information relevant to the user's specific question.
-            - Use simple, clear language suitable for text-to-speech conversion.
-            - Avoid commas, semicolons, colons, or other complex punctuation.
-            - Use short sentences with natural pauses.
-            - For lists, use new lines instead of commas.
-            - Structure complex information with clear headers and sections.
-            - If the available information is insufficient, state so clearly and suggest what is needed.
-            - Ensure all thoughts are fully completed and sentences are never left unfinished.
-            - Keep paragraphs short, with a maximum of 2-3 sentences.
-            - Summarize information rather than listing every detail.
-            - Never mention "OCR text" or "screen content" directly.
+            - Answer directly and conversationally about the content shown on screen
+            - Focus only on information relevant to the user's specific question
+            - Use simple clear language suitable for text-to-speech conversion
+            - Avoid using commas semicolons colons or other punctuation when possible
+            - Use short sentences with natural pauses
+            - For lists use new lines instead of commas
+            - Structure complex information with clear headers and sections
+            - If you can't answer from the available information say so clearly and suggest what's needed
+            - Complete your thoughts fully and never leave sentences unfinished
+            - Keep paragraphs short with 2-3 sentences maximum
+            - Summarize information instead of listing every detail
+            - Never mention "OCR text" or "screen content" directly
 
-            Your response must be complete, coherent, and helpful.
+            Your response must be complete coherent and helpful.
             """
             
             # Call Gemini API with streaming to handle long responses
             try:
                 generation_config = {
-                    "temperature": 0.5,  # Lower temperature for more focused responses
-                    "top_p": 0.85,      # Adjusted for better coherence
-                    "max_output_tokens": 8192,  # Maximum possible token limit
+                    "temperature": 0.5,
+                    "top_p": 0.85,
+                    "max_output_tokens": 8192,
                 }
                 
                 # Use streamed response to handle long outputs
@@ -468,11 +834,11 @@ class ScreenAIAssistant:
                 for response_chunk in self.model.generate_content(
                     prompt,
                     generation_config=generation_config,
-                    stream=True  # Enable streaming
+                    stream=True
                 ):
                     if response_chunk.text:
                         response_parts.append(response_chunk.text)
-                        # Optionally update UI with partial response
+                        # Update UI with partial response
                         partial_text = "".join(response_parts)
                         self.root.after(0, lambda t=partial_text: self.update_ai_output_streaming(t))
                 
@@ -488,6 +854,7 @@ class ScreenAIAssistant:
                 
                 # Update UI with complete AI response
                 self.root.after(0, lambda: self.update_ai_output(ai_response))
+                self.root.after(0, lambda: self.add_to_chat_history("Assistant", ai_response))
                 
                 # Speak response if voice is enabled
                 if self.voice_enabled_var.get():
@@ -572,22 +939,6 @@ class ScreenAIAssistant:
             threading.Thread(target=speak_thread, daemon=True).start()
         except Exception as e:
             logger.error(f"Speech chunking error: {e}")
-    
-    def speak_text(self, text):
-        """Legacy speech function - replaced by speak_text_in_chunks"""
-        try:
-            # Limit text length for speech
-            if len(text) > 500:
-                text = text[:497] + "..."
-                
-            # Speak in a separate thread to avoid UI freezing
-            def speak_thread():
-                self.speech_engine.say(text)
-                self.speech_engine.runAndWait()
-                
-            threading.Thread(target=speak_thread, daemon=True).start()
-        except Exception as e:
-            logger.error(f"Speech error: {e}")
     
     def analyze_current_context(self, additional_query=None):
         """Analyze the current screen context"""
