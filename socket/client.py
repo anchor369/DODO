@@ -1,3 +1,40 @@
+##########################
+
+import socket
+
+# Create a socket
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# Configure connection
+SERVER_IP = '192.168.159.63'  # Update with your Raspberry Pi's IP
+SERVER_PORT = 8765
+
+print(f"Attempting to connect to {SERVER_IP}:{SERVER_PORT}...")
+
+try:
+    # Try to connect
+    client.connect((SERVER_IP, SERVER_PORT))
+    print("Connection established!")
+    
+    # Receive message
+    data = client.recv(1024).decode('utf-8')
+    print(f"Server message: {data}")
+    
+    # Send response
+    client.send("Hello from client!".encode('utf-8'))
+    
+except ConnectionRefusedError:
+    print("Connection refused. Is the server running?")
+except socket.timeout:
+    print("Connection timed out. Check IP address and network.")
+except Exception as e:
+    print(f"Error: {str(e)}")
+finally:
+    client.close()
+
+
+
+##########################
 import socket
 import threading
 import json
