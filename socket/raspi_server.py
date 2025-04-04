@@ -1,3 +1,41 @@
+#########try#########
+import socket
+
+# Create a socket
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+# Configure the server
+SERVER_IP = '0.0.0.0'  # Listen on all interfaces
+SERVER_PORT = 8765
+
+# Bind and listen
+server.bind((SERVER_IP, SERVER_PORT))
+server.listen(5)
+print(f"Server listening on {SERVER_IP}:{SERVER_PORT}...")
+
+try:
+    # Accept a connection
+    client_sock, client_addr = server.accept()
+    print(f"Connection from {client_addr}")
+    
+    # Send test message
+    client_sock.send("Connection successful!".encode('utf-8'))
+    
+    # Receive response
+    response = client_sock.recv(1024).decode('utf-8')
+    print(f"Client response: {response}")
+    
+    # Close connection
+    client_sock.close()
+    
+except KeyboardInterrupt:
+    print("Server shutting down...")
+finally:
+    server.close()
+
+
+###############################################
 import socket
 import threading
 import json
